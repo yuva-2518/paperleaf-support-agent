@@ -14,7 +14,6 @@ Settings:
 """
 
 import asyncio
-import hmac
 import html
 import os
 import uuid
@@ -107,35 +106,6 @@ def show_details_form(key):
         st.rerun()
 
 
-def check_passcode():
-    """Show a passcode box. The chat opens only after the right passcode is entered."""
-    if st.session_state.get("unlocked"):
-        return
-    try:
-        passcode = st.secrets["APP_PASSCODE"]
-    except Exception:
-        st.error("The passcode is not set up yet. Add APP_PASSCODE to the app's secrets.")
-        st.stop()
-
-    _, middle, _ = st.columns([1, 2, 1])  # centre the card
-    with middle:
-        st.markdown(
-            "<div class='pl-lock'><div class='pl-lock-icon'>🔒</div>"
-            "<div class='pl-lock-title'>Welcome to PaperLeaf support</div>"
-            "<div class='pl-lock-text'>Enter the passcode to start chatting with Paige.</div></div>",
-            unsafe_allow_html=True,
-        )
-        with st.form("passcode_form"):
-            entered = st.text_input("Passcode", type="password", placeholder="Enter your passcode")
-            if st.form_submit_button("Open chat", use_container_width=True):
-                # compare_digest compares safely, so the passcode can't be guessed by timing.
-                if hmac.compare_digest(entered.encode(), str(passcode).encode()):
-                    st.session_state.unlocked = True
-                    st.rerun()
-                st.error("Sorry, that passcode isn't right. Please try again.")
-    st.stop()  # don't show the chat until the passcode is right
-
-
 def show_sidebar():
     """Show this chat's open tickets. Never other customers' tickets."""
     with st.sidebar:
@@ -180,7 +150,11 @@ st.markdown(
     "<div class='pl-topics'>Ask me about books, orders, delivery, payments, returns and refunds.</div>",
     unsafe_allow_html=True,
 )
-check_passcode()
+if not st.session_state.get("unlocked"):
+    from login import login_screen  # noqa: E402
+
+    login_screen()
+    st.stop()  # don't show the chat until the passcode is right
 
 # A new visitor gets their own private chat with Paige (one customer never sees another's).
 if "session_id" not in st.session_state:
