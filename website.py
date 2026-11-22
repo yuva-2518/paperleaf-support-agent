@@ -18,4 +18,9 @@ pages = [
     st.Page("shop.py", title="Shop", icon="📚", default=True),
     st.Page("app.py", title="Customer service", icon="💬", url_path="customer-service"),
 ]
-st.navigation(pages).run()
+page = st.navigation(pages)
+
+# The Dark mode switch sits in the sidebar, under the menu. Flipping it re-runs the page in the new colours.
+st.sidebar.toggle("🌙 Dark mode", key="dark")
+
+page.run()

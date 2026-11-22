@@ -51,13 +51,26 @@ st.markdown(
     "<p>Printed books, new and pre-loved, delivered across India.</p>"
     "<span class='pl-chip'>🚚 Free delivery above ₹499</span>"
     "<span class='pl-chip'>📖 New &amp; Pre-loved</span>"
-    "<span class='pl-chip'>💬 Chat with Paige in Customer service</span></div>",
+    "<span class='pl-chip'>🎁 Gift wrapping available</span></div>",
     unsafe_allow_html=True,
 )
 
 books = load_books()
 
+# A few numbers about the shop, and a way into the chat.
+pre_loved = sum(1 for b in books if b["condition"] == "Pre-loved")
+st.markdown(
+    f"<div class='pl-stats'>"
+    f"<div class='pl-stat'><b>{len(books)}</b><span>books to browse</span></div>"
+    f"<div class='pl-stat'><b>{len({b['category'] for b in books})}</b><span>categories</span></div>"
+    f"<div class='pl-stat'><b>{pre_loved}</b><span>pre-loved finds</span></div>"
+    f"<div class='pl-stat'><b>9 AM - 9 PM</b><span>support team, every day</span></div></div>",
+    unsafe_allow_html=True,
+)
+st.page_link("app.py", label="Need help? Chat with Paige", icon="💬")
+
 # Search and filters.
+st.subheader("Browse our books")
 left, middle, right = st.columns([2, 1, 1])
 search = left.text_input("Search", placeholder="Search by title or author", label_visibility="collapsed")
 category = middle.selectbox("Category", ["All categories"] + sorted({b["category"] for b in books}), label_visibility="collapsed")
@@ -70,12 +83,27 @@ shown = [
     and (condition == "New and Pre-loved" or b["condition"] == condition)
 ]
 
+
+def show_books(list_of_books):
+    """The books, three to a row."""
+    for start in range(0, len(list_of_books), 3):
+        for column, book in zip(st.columns(3), list_of_books[start:start + 3]):
+            column.markdown(book_card(book), unsafe_allow_html=True)
+
+
+# With no search or filter, start with the top-rated books.
+if not search and category == "All categories" and condition == "New and Pre-loved":
+    st.markdown("##### ⭐ Top rated")
+    show_books(sorted(books, key=lambda b: float(b["rating"]), reverse=True)[:3])
+    st.markdown("##### All books")
+
 st.caption(f"Showing {len(shown)} of {len(books)} books")
 if not shown:
     st.warning("No books match your search. Try a different word or filter.")
+show_books(shown)
 
-# The books, three to a row.
-for start in range(0, len(shown), 3):
-    columns = st.columns(3)
-    for column, book in zip(columns, shown[start:start + 3]):
-        column.markdown(book_card(book), unsafe_allow_html=True)
+st.markdown(
+    "<div class='pl-footer'>PaperLeaf Books · Printed books across India · "
+    "Support team available 9 AM to 9 PM, all days</div>",
+    unsafe_allow_html=True,
+)

@@ -15,6 +15,7 @@ Settings:
 
 import asyncio
 import hmac
+import html
 import os
 import uuid
 
@@ -116,14 +117,22 @@ def check_passcode():
         st.error("The passcode is not set up yet. Add APP_PASSCODE to the app's secrets.")
         st.stop()
 
-    with st.form("passcode_form"):
-        entered = st.text_input("Please enter the passcode to start chatting", type="password")
-        if st.form_submit_button("Open chat"):
-            # compare_digest compares safely, so the passcode can't be guessed by timing.
-            if hmac.compare_digest(entered.encode(), str(passcode).encode()):
-                st.session_state.unlocked = True
-                st.rerun()
-            st.error("Sorry, that passcode isn't right. Please try again.")
+    _, middle, _ = st.columns([1, 2, 1])  # centre the card
+    with middle:
+        st.markdown(
+            "<div class='pl-lock'><div class='pl-lock-icon'>🔒</div>"
+            "<div class='pl-lock-title'>Welcome to PaperLeaf support</div>"
+            "<div class='pl-lock-text'>Enter the passcode to start chatting with Paige.</div></div>",
+            unsafe_allow_html=True,
+        )
+        with st.form("passcode_form"):
+            entered = st.text_input("Passcode", type="password", placeholder="Enter your passcode")
+            if st.form_submit_button("Open chat", use_container_width=True):
+                # compare_digest compares safely, so the passcode can't be guessed by timing.
+                if hmac.compare_digest(entered.encode(), str(passcode).encode()):
+                    st.session_state.unlocked = True
+                    st.rerun()
+                st.error("Sorry, that passcode isn't right. Please try again.")
     st.stop()  # don't show the chat until the passcode is right
 
 
@@ -135,16 +144,21 @@ def show_sidebar():
             for key in ("session_id", "user_id", "messages"):
                 st.session_state.pop(key, None)
             st.rerun()
-        st.header("Your open tickets")
+        st.subheader("Your open tickets")
         my_ids = CHAT_NOTES.get(st.session_state.session_id, {}).get("ticket_ids", [])
         mine = [t for t in read_tickets() if t["ticket_id"] in my_ids and t["status"] == "open"]
         if not mine:
             st.caption("No open tickets in this chat yet.")
         for ticket in mine:
             st.markdown(
-                f"**{ticket['ticket_id']}**  \n{ticket['reason']}  \n"
-                f"_{ticket['time'].replace('T', ' ')} · {ticket['status']}_"
+                f"<div class='pl-ticket'><span class='pl-ticket-id'>{html.escape(ticket['ticket_id'])}</span>"
+                f"<span class='pl-ticket-status'>{html.escape(ticket['status'])}</span>"
+                f"<div class='pl-ticket-reason'>{html.escape(ticket['reason'])}</div>"
+                f"<div class='pl-ticket-time'>{html.escape(ticket['time'].replace('T', ' '))}</div></div>",
+                unsafe_allow_html=True,
             )
+        st.divider()
+        st.caption("One chat can have one ticket. For another issue, start a new chat.")
 
 
 # --- The page ---
@@ -152,8 +166,20 @@ st.set_page_config(page_title="PaperLeaf Books Support", page_icon="📚")
 from style import apply_style  # noqa: E402
 
 apply_style()
+# On this page the chat sits in a centred column, like a messaging app.
+st.markdown(
+    "<style>.block-container { max-width: 820px !important; } h1 { font-size: 2rem !important; }</style>",
+    unsafe_allow_html=True,
+)
 st.title("PaperLeaf Books Support")
-st.caption("💬 Chat with Paige about your books, orders, delivery, payments, returns and refunds.")
+st.markdown(
+    "<div class='pl-chat-head'><div class='pl-avatar'>📖</div><div>"
+    "<div class='pl-chat-name'>Paige</div>"
+    "<div class='pl-chat-sub'><span class='pl-dot'></span> Online · PaperLeaf Books support</div></div>"
+    "<div class='pl-hours'>Our team is available<br>9 AM to 9 PM, all days</div></div>"
+    "<div class='pl-topics'>Ask me about books, orders, delivery, payments, returns and refunds.</div>",
+    unsafe_allow_html=True,
+)
 check_passcode()
 
 # A new visitor gets their own private chat with Paige (one customer never sees another's).
@@ -174,7 +200,8 @@ show_sidebar()
 # Show the chat so far. The form appears only under Paige's latest message.
 messages = st.session_state.messages
 for i, message in enumerate(messages):
-    with st.chat_message(message["role"], avatar="📖" if message["role"] == "assistant" else "🙂"):
+    # Paige has a book icon; customers have no icon (the page hides it).
+    with st.chat_message(message["role"], avatar="📖" if message["role"] == "assistant" else None):
         st.markdown(message["content"].replace("\n", "  \n"))  # keep line breaks
         if message["form"] and i == len(messages) - 1:
             show_details_form(key=f"details_form_{i}")
@@ -186,13 +213,23 @@ def quick_replies():
         return
     text = last["content"].lower()
 
-    if len(messages) == 1:  # the start of the chat: common topics
-        options = [
-            ("🚚 Delivery", "How long does delivery take?"),
-            ("💳 Payments", "Which payment methods can I use?"),
-            ("↩️ Returns", "What is your return policy?"),
-            ("📦 Track my order", "How do I track my order?"),
+    if len(messages) == 1:  # the start of the chat: topic cards, three to a row
+        topics = [
+            ("🚚  Delivery", "How long does delivery take?"),
+            ("💳  Payments", "Which payment methods can I use?"),
+            ("↩️  Returns", "What is your return policy?"),
+            ("📦  Track my order", "How do I track my order?"),
+            ("📚  Find a book", "Can you suggest a good book?"),
+            ("🛠️  Damaged or wrong book", "My book arrived damaged!"),
         ]
+        st.markdown("<div class='pl-start-title'>What can I help you with?</div>", unsafe_allow_html=True)
+        with st.container(key="topics"):
+            for row in range(0, len(topics), 3):
+                for column, (label, message) in zip(st.columns(3), topics[row:row + 3]):
+                    if column.button(label, key=f"topic_{label}", use_container_width=True):
+                        send(message)
+                        st.rerun()
+        return
     elif "1 to 5 stars" in text:  # the rating question
         options = [(f"{n} ⭐", str(n)) for n in range(1, 6)]
     elif "resolved" in text:
@@ -204,11 +241,13 @@ def quick_replies():
     else:
         return
 
-    columns = st.columns(len(options))
-    for column, (label, message) in zip(columns, options):
-        if column.button(label, key=f"quick_{len(messages)}_{label}", use_container_width=True):
-            send(message)
-            st.rerun()
+    # Small buttons side by side, with empty space on the right.
+    with st.container(key="quick"):
+        columns = st.columns([2] * len(options) + [max(1, 10 - 2 * len(options))])
+        for column, (label, message) in zip(columns, options):
+            if column.button(label, key=f"quick_{len(messages)}_{label}", use_container_width=True):
+                send(message)
+                st.rerun()
 
 
 quick_replies()
