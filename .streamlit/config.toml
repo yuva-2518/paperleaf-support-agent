@@ -1,0 +1,15 @@
+# The look of the PaperLeaf website: warm paper colours with a deep red accent.
+# (This file is safe to upload. The secret passcode lives in secrets.toml, which is not.)
+[theme]
+base = "light"
+primaryColor = "#8B2E3C"
+backgroundColor = "#FBF7F0"
+secondaryBackgroundColor = "#F3EADB"
+textColor = "#2B2420"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"

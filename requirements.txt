@@ -1,0 +1,11 @@
+# The Python packages this project uses, with exact versions so every laptop gets the same thing.
+# Install them with:  pip install -r requirements.txt   (Claude Code does this for you in Session 0)
+
+google-adk==2.15.0      # Google's Agent Development Kit: runs the agent and the "adk web" chat page
+python-dotenv==1.2.4    # reads your settings from the .env file
+chromadb==1.5.9         # stores the help-docs index (Session 2, help-docs track)
+streamlit==1.67.0       # the chat page you put online (Session 4)
+
+# Pinned because newer versions have no ready-made install file for some Macs,
+# and pip would then try (and fail) to build it from source.
+cryptography==48.0.0
